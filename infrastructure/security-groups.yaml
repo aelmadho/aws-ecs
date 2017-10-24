@@ -1,0 +1,126 @@
+Description: >
+    This template contains the security groups required by our entire stack.
+    We create them in a seperate nested template, so they can be referenced
+    by all of the other nested templates.
+
+Parameters:
+    EnvironmentName:
+        Description: An environment name that will be prefixed to resource names
+        Type: String
+
+    VPC:
+        Type: AWS::EC2::VPC::Id
+        Description: Choose which VPC the security groups should be deployed to
+    
+    VpcCidr:
+        Type: String
+        Description: The VPC Cidr block used to configure security group settings
+
+Resources:
+    ALBSecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            VpcId: !Ref VPC
+            GroupDescription: Access to the load balancer that sits in front of ECS
+            SecurityGroupIngress:
+                # Allow access from anywhere to our external stack load balancer 80/443
+                - CidrIp: 0.0.0.0/0
+                  FromPort: 80
+                  ToPort: 80
+                  IpProtocol: tcp
+                - CidrIp: 0.0.0.0/0
+                  FromPort: 443
+                  ToPort: 443
+                  IpProtocol: tcp
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName}-LoadBalancers
+
+    ECSHostSecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            VpcId: !Ref VPC
+            GroupDescription: Access to the ECS hosts and the tasks/containers that run on them
+            SecurityGroupIngress:
+                # Only allow inbound access to ECS from the ELB
+                - SourceSecurityGroupId: !GetAtt ALBSecurityGroup.GroupId
+                  IpProtocol: -1
+                # Allow ssh access to the ecs hosts from bastion host sg 
+                - SourceSecurityGroupId: !GetAtt BastionHostSSHSecurityGroup.GroupId
+                  FromPort: 22
+                  ToPort: 22
+                  IpProtocol: tcp
+                # Allow Weave NET discovery among hosts in VPC
+                - CidrIp: !Ref VpcCidr
+                  FromPort: 6783
+                  ToPort: 6783
+                  IpProtocol: tcp
+                - CidrIp: !Ref VpcCidr
+                  FromPort: 6783
+                  ToPort: 6784
+                  IpProtocol: udp
+                # Allow weavescop propes
+                - CidrIp: !Ref VpcCidr # weavescope
+                  FromPort: 4040
+                  ToPort: 4040
+                  IpProtocol: tcp
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName}-ECSHosts
+
+    # Bastion
+    BastionHostSSHSecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            VpcId: !Ref VPC
+            GroupDescription: SSH Access to the ECS hosts and the tasks/containers that run on them
+            SecurityGroupIngress:
+                # Allow ssh access to the Bastion host from any external IP
+                # TODO: Use Whitelist/DXC/VPN IP
+                - CidrIp: 0.0.0.0/0
+                  FromPort: 22
+                  ToPort: 22
+                  IpProtocol: tcp
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName}-BastionHostSSHSecurityGroup
+
+    # EFS
+    MountTargetSecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            VpcId: !Ref VPC
+            GroupDescription: Allow NFS mount for Internal ECS cluster
+            SecurityGroupIngress:
+            - SourceSecurityGroupId: !GetAtt ECSHostSecurityGroup.GroupId
+              IpProtocol: tcp
+              FromPort: '2049'
+              ToPort: '2049'
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName}-MountTargetSecurityGroup
+        
+Outputs:
+    ALBSecurityGroup:
+        Description: A reference to the security group for load balancers
+        Value: !Ref ALBSecurityGroup
+        Export:
+          Name: !Sub "${EnvironmentName}-ALBSecurityGroup"
+
+    ECSHostSecurityGroup:
+        Description: A reference to the security group for load balancers
+        Value: !Ref ECSHostSecurityGroup
+        Export:
+          Name: !Sub "${EnvironmentName}-ECSHostSecurityGroup"
+
+    BastionHostSSHSecurityGroup:
+        Description: A reference to the bastion host security group
+        Value: !Ref BastionHostSSHSecurityGroup
+        Export:
+          Name: !Sub "${EnvironmentName}-BastionHostSSHSecurityGroup"
+
+    MountTargetSecurityGroup:
+        Description: A reference to the MountTarget security group for ECS/EFS integration
+        Value: !Ref MountTargetSecurityGroup
+        Export:
+          Name: !Sub "${EnvironmentName}-MountTargetSecurityGroup"

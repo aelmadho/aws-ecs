@@ -1,0 +1,71 @@
+Description: >
+    This template deploys an Application Load Balancer that exposes our various ECS services.
+    We create them it a seperate nested template, so it can be referenced by all of the other nested templates.
+
+Parameters:
+    EnvironmentName:
+        Description: An environment name that will be prefixed to resource names
+        Type: String
+
+    VPC:
+        Type: AWS::EC2::VPC::Id
+        Description: Choose which VPC the Applicaion Load Balancer should be deployed to
+
+    Subnets:
+        Description: Choose which subnets the Applicaion Load Balancer should be deployed to
+        Type: List<AWS::EC2::Subnet::Id>
+
+    ALBSecurityGroup:
+        Description: Select the Security Group to apply to the external Applicaion Load Balancer
+        Type: AWS::EC2::SecurityGroup::Id
+
+Resources:
+    ALB:
+        Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+        Properties:
+            Name: !Sub "${EnvironmentName}-alb"
+            Subnets: !Ref Subnets
+            SecurityGroups:
+                - !Ref ALBSecurityGroup
+            Tags:
+                - Key: Name
+                  Value: !Sub "${EnvironmentName}-alb"
+
+    ALBListener:
+        Type: AWS::ElasticLoadBalancingV2::Listener
+        Properties:
+            LoadBalancerArn: !Ref ALB
+            Port: 80
+            Protocol: HTTP
+            DefaultActions:
+                - Type: forward
+                  TargetGroupArn: !Ref ALBDefaultTargetGroup
+
+    ALBDefaultTargetGroup:
+        Type: AWS::ElasticLoadBalancingV2::TargetGroup
+        Properties:
+            Name: !Join ["-", [ !Ref "EnvironmentName", default-tg]]
+            VpcId: !Ref VPC
+            Port: 80
+            Protocol: HTTP
+
+Outputs:
+    ALB:
+        Description: A reference to the  Application Load Balancer
+        Value: !Ref ALB
+
+    ALBUrl:
+        Description: A reference to a ALB DNS Url
+        Value: !GetAtt ALB.DNSName
+        Export:
+            Name: !Sub "${EnvironmentName}-ALBDnsUrl"
+
+    ALBListener:
+        Description: A reference to a port 80 listener
+        Value: !Ref ALBListener
+        Export:
+            Name: !Sub "${EnvironmentName}-ALBListener"
+
+    ALBDefaultTargetGroup:
+        Description: Load Balancer default TargetGroup
+        Value: !Ref ALBDefaultTargetGroup

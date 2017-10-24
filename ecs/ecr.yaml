@@ -1,0 +1,19 @@
+Description: >
+    This template deploys an ECR repository.
+
+Parameters:
+    EnvironmentName:
+        Description: An environment name that will be prefixed to resource names
+        Type: String
+
+Resources:
+  WebECR: 
+    Type: "AWS::ECR::Repository"
+    Properties: 
+      RepositoryName: !Sub "${EnvironmentName}-web"
+
+Outputs:
+  WebECR:
+    Value: !Ref WebECR
+    Export:
+      Name: WebECR

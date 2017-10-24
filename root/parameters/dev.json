@@ -1,0 +1,46 @@
+[
+    { 
+        "ParameterKey": "EnvironmentName",
+        "ParameterValue": "dev"
+    },
+    {
+        "ParameterKey": "VpcCIDR",
+        "ParameterValue": "10.10.0.0/16"
+    },
+    {
+        "ParameterKey": "PublicSubnets",
+        "ParameterValue": "10.10.1.0/24,10.10.3.0/24"
+    },
+    {
+        "ParameterKey": "PrivateSubnets",
+        "ParameterValue": "10.10.2.0/24,10.10.4.0/24"
+    },
+    {
+        "ParameterKey": "TemplateBucket",
+        "ParameterValue": "aelmadho-ecs-cluster"
+    },
+    {
+        "ParameterKey": "KeyName",
+        "ParameterValue": "aelmadho-ecs-cluster"
+    },
+    {
+        "ParameterKey": "InstanceType",
+        "ParameterValue": "m4.large"
+    },
+    {
+        "ParameterKey": "MinClusterSize",
+        "ParameterValue": "1"
+    },
+    {
+        "ParameterKey": "MaxClusterSize",
+        "ParameterValue": "2"
+    },
+    {
+        "ParameterKey": "DesiredClusterSize",
+        "ParameterValue": "1"
+    },
+    {
+        "ParameterKey": "BastionHostKeyName",
+        "ParameterValue": "aelmadho-ecs-cluster"
+    }
+]

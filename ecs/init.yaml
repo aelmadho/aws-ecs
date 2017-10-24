@@ -1,0 +1,88 @@
+Description: >
+
+    This template deploys a VPC, with a pair of public and private subnets spread
+    across two Availabilty Zones. It deploys an Internet Gateway, with a default
+    route on the public subnets. It deploys a pair of NAT Gateways (one in each AZ),
+    and default routes for them in the private subnets.
+
+    It then deploys a highly available ECS cluster using an AutoScaling Group, with
+    ECS hosts distributed across multiple Availability Zones.
+
+Parameters:
+    EnvironmentName:
+        Type: String
+
+    TemplateBucket:
+        Description: Bucket location of CF Templates
+        Type: String
+
+    InstanceType:
+        Description: Instance type used for ECS hosts
+        Type: String
+
+    KeyName:
+        Description: Key pair name for ssh access
+        Type: String
+
+    MinClusterSize:
+        Description: How many ECS hosts do you want to initially deploy?
+        Type: Number
+
+    MaxClusterSize:
+        Description: Maximum number of ECS hosts to deploy
+        Type: Number
+    
+    DesiredClusterSize:
+        Description: Desired number of ECS hosts for initial deploy
+        Type: Number
+
+Resources:
+    ECS:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Join ["", [ "https://s3.amazonaws.com/", !Ref TemplateBucket, "/ecs/cluster.yaml" ] ]
+            Parameters:
+                EnvironmentName: !Ref EnvironmentName
+                ClusterName: !Ref EnvironmentName
+                MinClusterSize: !Ref MinClusterSize
+                MaxClusterSize: !Ref MaxClusterSize
+                DesiredClusterSize: !Ref DesiredClusterSize
+                InstanceType: !Ref InstanceType
+                FileSystemId: !GetAtt EFS.Outputs.FileSystemId
+                AssociatePublicIp: false
+                KeyName: !Ref KeyName
+                VPC:
+                  Fn::ImportValue:
+                    !Sub "${EnvironmentName}-VpcId" 
+                Subnets:
+                  Fn::ImportValue:
+                    !Sub "${EnvironmentName}-Private-Subnets"
+                SecurityGroup: 
+                    Fn::ImportValue:
+                      !Sub "${EnvironmentName}-ECSHostSecurityGroup"
+
+    EFS:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Join ["", [ "https://s3.amazonaws.com/", !Ref TemplateBucket, "/ecs/efs.yaml" ] ]
+            Parameters:
+                EnvironmentName: !Sub "${EnvironmentName}-EFSVolume"
+                SecurityGroup:
+                  Fn::ImportValue: !Sub "${EnvironmentName}-MountTargetSecurityGroup"
+                Subnets:
+                  Fn::ImportValue: !Sub "${EnvironmentName}-Private-Subnets"
+                ClusterName: !Join ["-", [ !Ref "AWS::StackName", "ecs" ]]
+
+    ECR:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Join ["", [ "https://s3.amazonaws.com/", !Ref TemplateBucket, "/ecs/ecr.yaml" ] ]
+            Parameters:
+                EnvironmentName: !Ref EnvironmentName
+
+Outputs:
+    ECSCluster:
+        Description: Reference to the ECS cluster
+        Value: !GetAtt ECS.Outputs.Cluster
+        Export:
+            Name: !Sub "${EnvironmentName}-ECSCluster"

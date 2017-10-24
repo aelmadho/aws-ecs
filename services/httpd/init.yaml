@@ -1,0 +1,103 @@
+Parameters:
+  EnvironmentName:
+    Type: String
+
+  DesiredCount:
+    Type: Number
+
+  Repository:
+    Type: String
+
+  RepositoryTag:
+    Type: String
+
+  ServicePort:
+    Type: String
+
+Resources:
+  CloudwatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['-', [ECSLogGroup, !Ref 'AWS::StackName']]
+      RetentionInDays: 14
+
+  ECSServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub svc-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": { "Service": [ "ecs.amazonaws.com" ]},
+                "Action": [ "sts:AssumeRole" ]
+            }]
+        }
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole
+
+  ListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref ECSTG
+      Conditions:
+        - Field: path-pattern
+          Values:
+          - "/*"
+      ListenerArn:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-ALBListener"
+      Priority: 1
+
+  ECSTG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${EnvironmentName}-${Repository}-ECSTG"
+      HealthCheckIntervalSeconds: 60
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 30
+      HealthyThresholdCount: 2
+      Matcher:
+        HttpCode: '200,403'
+      Port: !Ref ServicePort
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-VpcId"
+
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: 
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-ECSCluster"
+      Role: !Ref ECSServiceRole
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDefinition
+      LoadBalancers:
+      - ContainerName: !Ref Repository
+        ContainerPort: !Ref ServicePort
+        TargetGroupArn: !Ref ECSTG
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${AWS::StackName}-${Repository}
+      ContainerDefinitions:
+        - Name: !Ref Repository
+          Image: !Sub "${Repository}:${RepositoryTag}"
+          Essential: true
+          Memory: 2048
+          PortMappings:
+            - ContainerPort: !Ref ServicePort
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CloudwatchLogsGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: !Ref RepositoryTag

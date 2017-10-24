@@ -1,0 +1,24 @@
+Description: >
+    This template deploys all spring-cloud core services on the enviornment specified, based on the right
+    order and orchestration process.  It deploys the services as containers to the ECS cluster
+    which is specified using the EnvironmentName parameter.
+
+Parameters:
+    EnvironmentName:
+        Type: String
+
+    TemplateBucket:
+        Description: Bucket location of CF Templates
+        Type: String
+
+Resources:
+    Web:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Join ["", [ "https://s3.amazonaws.com/", !Ref TemplateBucket, "/services/httpd/init.yaml" ] ]
+            Parameters:
+                EnvironmentName: !Ref EnvironmentName
+                DesiredCount: 1
+                Repository: httpd
+                RepositoryTag: latest
+                ServicePort: 80
