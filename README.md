@@ -1,6 +1,6 @@
 # ECS Cluster
 
-This is a reference architecture describing best practices when deploying services with AWS EC2 Container Services (ECS).  It is a collection of Cloudformation templates and scripts that customizes an ECS cluster, and and a sample webservice running httpd.  The list below describes the list of artifacts used in this process:
+This is a sample set of cloudformation scripts that can be used to deploy services with AWS EC2 Container Services (ECS).  It is a collection of Cloudformation templates and scripts that customizes an ECS cluster, and and a sample webservice running httpd.  The list below describes the list of artifacts used in this process:
 
 1. Cloudformation templates to launch a VPC, networking, security-groups, ECS cluster and repositories.
 2. Customized ECS cluster with logging support and EFS for supporting file-system stateful services
