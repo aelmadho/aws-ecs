@@ -1,10 +1,26 @@
 # ECS Cluster
 
-This is a sample set of cloudformation scripts that can be used to deploy services with AWS EC2 Container Services (ECS).  It is a collection of Cloudformation templates and scripts that customizes an ECS cluster, and and a sample webservice running httpd.  The list below describes the list of artifacts used in this process:
+This is a sample set of cloudformation scripts that can be used to deploy services with AWS EC2 Container Services (ECS).  It is a collection of Cloudformation templates and scripts that builds and customizes an ECS cluster, and and a sample webservice running httpd.  The list below describes the list of artifacts used in this process:
 
 1. Cloudformation templates to launch a VPC, networking, security-groups, ECS cluster and repositories.
 2. Customized ECS cluster with logging support and EFS for supporting file-system stateful services
 3. Sample web service
+
+
+### Overview
+
+The set of CloudFormation scripts will provision the following resources:
+
+1. Application Load Balancer
+2. Two public subnets in two different availability zones
+3. Two private subnets in two different availability zones
+4. ECR repository
+5. Elastic File System (EFS) for container persistence layer
+6. Integration with cloudwatch metrics via Cloudwatch agent
+
+The following diagram describes the resources and architecture:
+
+![Architecture](/drawio/images/aws-ecs.jpg)
 
 ### Requirements:
 
